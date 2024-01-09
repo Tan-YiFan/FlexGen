@@ -209,8 +209,8 @@ class TorchDevice:
             # so we only need one workspace instead of two.
             for i in range(1 if policy.sep_layer else 2):
                 shape = (max_seq_len, b * n_head, head_dim)
-                k_cache = self.allocate(shape, np.float32, pin_memory=False)
-                v_cache = self.allocate(shape, np.float32, pin_memory=False)
+                k_cache = self.allocate(shape, np.float32, pin_memory=True)
+                v_cache = self.allocate(shape, np.float32, pin_memory=True)
                 self.attention_compute_workspace.append((k_cache, v_cache))
         else:
             self.compressed_device.init_attention_compute_workspace(
@@ -290,7 +290,7 @@ class TorchDevice:
             policy.gpu_batch_size)
         shape = (prompt_len + gen_len - 1, gpu_batch_size * num_head, hidden_size // num_head)
         # NOTE: disable pin_memory due to high memory overhead
-        pin_memory = False
+        pin_memory = True
         k_cache = self.allocate(shape, np.float16, pin_memory=pin_memory)
         v_cache = self.allocate(shape, np.float16, pin_memory=pin_memory)
         return k_cache, v_cache
@@ -752,7 +752,7 @@ class TorchMixedDevice:
             len_disk = shape[SEG_DIM] - len_gpu - len_cpu
         lens = [len_gpu, len_cpu, len_disk]
 
-        pin_memory = False
+        pin_memory = True
         k_cache = self.allocate(shape, np.float16,
             seg_lengths=lens, pin_memory=pin_memory)
         v_cache = self.allocate(shape, np.float16,

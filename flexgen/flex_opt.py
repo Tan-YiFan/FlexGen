@@ -88,17 +88,35 @@ def get_choice(cur_percent, percents, choices):
             return choices[i]
     return choices[-1]
 
-
+cur_sum=0
+cum_sum=0
 def init_weight_list(weight_specs, policy, env):
     dev_percents = [policy.w_disk_percent, policy.w_cpu_percent, policy.w_gpu_percent]
     dev_choices = [env.disk, env.cpu, env.gpu]
 
-    sizes = [np.prod(spec[0]) for spec in weight_specs]
+    sizes = [(np.prod(spec[0]) * 2) if len(spec[0]) < 2 else (np.prod(spec[0])) for spec in weight_specs]
     sizes_cumsum = np.cumsum(sizes)
     ret = []
     for i in range(len(weight_specs)):
-        mid_percent = (sizes_cumsum[i] - sizes[i] / 2) / sizes_cumsum[-1]
-        home = get_choice(mid_percent * 100, dev_percents, dev_choices)
+        # mid_percent = (sizes_cumsum[i] - sizes[i] / 2) / sizes_cumsum[-1]
+        global cur_sum
+        global cum_sum
+        s = np.prod(weight_specs[i][0])
+        if (len(weight_specs[i][0]) < 2):
+            s *= 2
+        else:
+            s = s // 2
+        cum_sum += s
+        # mid_percent = cur_sum
+
+        # home = get_choice(mid_percent * 100, dev_percents, dev_choices)
+        home = env.gpu
+        # print(policy.w_gpu_percent)
+        if (cur_sum + s) / cum_sum > policy.w_gpu_percent / 100:
+            home = env.cpu
+        else:
+            cur_sum+=s
+        # print(cur_sum, cum_sum)
         shape, dtype, filename = weight_specs[i]
 
         if len(shape) < 2:
@@ -1181,7 +1199,7 @@ def run_flexgen(args):
     if args.model == "facebook/galactica-30b":
         tokenizer = AutoTokenizer.from_pretrained("facebook/galactica-30b", padding_side="left")
     else:
-        tokenizer = AutoTokenizer.from_pretrained("facebook/opt-30b", padding_side="left")
+        tokenizer = AutoTokenizer.from_pretrained("/nvme/tyf/hf/hub/models--facebook--opt-30b/snapshots/ceea0a90ac0f6fae7c2c34bcb40477438c152546", padding_side="left")
     num_prompts = args.num_gpu_batches * args.gpu_batch_size
     prompt_len, gen_len, cut_gen_len = args.prompt_len, args.gen_len, args.cut_gen_len
 
